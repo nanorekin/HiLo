@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Feeless Higher/Lower</title>
+<title>HiLo</title>
 <meta name="description" content="A free crypto price guessing game. Is the next price higher or lower? Daily challenge, quick 60-second rounds and survival mode, with Nano at the heart. No fees.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,11 +112,11 @@ footer { color:var(--muted); font-size:0.8rem; }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
 </style></head>
 <body>
-<noscript><p style="padding:16px">Feeless Higher/Lower needs JavaScript to run.</p></noscript>
+<noscript><p style="padding:16px">HiLo needs JavaScript to run.</p></noscript>
 <div class="layout">
   <main class="stage" id="stage">
     <div class="topbar">
-      <h1>Feeless Higher/Lower <span class="sup" id="supmark" hidden title="Supporter">&#10022;</span></h1>
+      <h1>HiLo <span class="sup" id="supmark" hidden title="Supporter">&#10022;</span></h1>
       <button type="button" id="snd" aria-pressed="true" style="min-height:36px;padding:4px 12px;font-size:0.8rem">Sound on</button>
     </div>
     <div class="modes" role="group" aria-label="Mode">
@@ -542,7 +542,7 @@ footer { color:var(--muted); font-size:0.8rem; }
   function copyText(text, ok, fail) { try { navigator.clipboard.writeText(text).then(ok, fail); } catch (e) { fail(); } }
   function shareUrl() { return location.href.split("#")[0].split("?")[0]; }
   $("o-share").addEventListener("click", function () {
-    const head = mode === "daily" ? "Feeless Higher/Lower #" + dailyCfg.no : (mode === "survival" ? "Feeless Higher/Lower Survival" : "Feeless Higher/Lower");
+    const head = mode === "daily" ? "HiLo #" + dailyCfg.no : (mode === "survival" ? "HiLo Survival" : "HiLo");
     const stat = mode === "survival" ? ("a chain of " + bestStreak) : ("score " + score);
     const msg = head + ": " + stat + " (" + correct + " correct, " + wrong + " wrong)\nCan you beat it? " + shareUrl();
     const fallback = function () { copyText(msg, function () { $("o-status").textContent = "Copied. Paste it into a message to challenge a friend."; }, function () { $("o-status").textContent = msg; }); };

@@ -1,4 +1,4 @@
-# Feeless Higher/Lower
+# HiLo
 
 A free, single-file browser price-guessing game with Nano at its heart. You're shown a coin, a date and its price; guess whether the next hidden card's price was higher or lower. No build step, no backend, no fees — and no live price feed, so the game never goes stale or breaks when an API changes.
 
@@ -22,10 +22,10 @@ Cards live in the `DATA` array near the top of the script in `index.html`, as `[
 
 ## Deploy on GitHub Pages
 
-1. Create a new repository, for example `feeless-higher-lower`.
+1. Create a new repository, for example `hilo`.
 2. Upload `index.html` and `README.md` to the root of the repository.
 3. Open **Settings > Pages**, set the source to **Deploy from a branch**, choose `main` and `/ (root)`, then save.
-4. After a minute the game is live at `https://<your-username>.github.io/feeless-higher-lower/`.
+4. After a minute the game is live at `https://<your-username>.github.io/hilo/`.
 
 ## Donations
 
