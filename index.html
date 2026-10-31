@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Feeless Higher/Lower</title>
+<meta name="description" content="A free crypto price guessing game. Is the next price higher or lower? Daily challenge, quick 60-second rounds and survival mode, with Nano at the heart. No fees.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg:#0b1220; --card:#121c30; --ink:#e7eefc; --muted:#93a3c0; --line:#24334f;
+  --accent:#4ea1ff; --accent-ink:#04101f; --field:#0e1729;
+  --good:#4ade80; --bad:#ff6b6b; --gold:#fbbf24; --scrim:rgba(4,9,20,0.82); color-scheme:dark;
+}
+* { box-sizing:border-box; }
+html { background:var(--bg); }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.5 "Sora","Helvetica Neue",Arial,sans-serif; -webkit-text-size-adjust:100%;
+  padding-inline:max(16px, env(safe-area-inset-left, 0px)); padding-block:12px 40px;
+}
+[hidden] { display:none !important; }
+.layout { max-width:980px; margin-inline:auto; display:grid; grid-template-columns:minmax(0,1fr); gap:24px; align-items:start; }
+@media (min-width:900px) { .layout { grid-template-columns:minmax(0,480px) minmax(0,1fr); } .stage { position:sticky; top:12px; } }
+.layout > * { min-width:0; }
+.mono { font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; font-variant-numeric:tabular-nums; }
+button, .btn {
+  font:600 0.9rem "Sora","Helvetica Neue",Arial,sans-serif; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:8px 14px; min-height:44px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); color:var(--ink); touch-action:manipulation; line-height:1.2;
+}
+button:disabled { opacity:0.5; cursor:not-allowed; }
+button.primary, .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:800; }
+button[aria-pressed="true"] { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+button.primary[aria-pressed="true"] { box-shadow:none; }
+button:focus-visible, .btn:focus-visible, summary:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+.stage { display:flex; flex-direction:column; gap:10px; width:100%; max-width:480px; margin-inline:auto; }
+@media (min-width:900px) { .stage { margin-inline:0; } }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.topbar h1 { margin:0; font-weight:800; font-size:1.2rem; line-height:1.1; letter-spacing:-0.01em; }
+.topbar .sup { color:var(--gold); font-size:0.9em; }
+.modes { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.modes button { min-height:40px; padding:4px 8px; font-size:0.82rem; }
+.mod { font-size:0.78rem; line-height:1.3; color:var(--muted); min-height:1.3em; }
+.mod b { color:var(--gold); font-weight:600; }
+.hud { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.hud div { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 10px; min-width:0; }
+.hud small { color:var(--muted); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; }
+.hud b { font-family:"JetBrains Mono",monospace; font-size:1.05rem; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.board { position:relative; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; min-height:420px; }
+.hlcard { background:var(--field); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; position:relative; }
+.hlcard.cur { border-color:var(--accent); }
+.hlcard .chip { align-self:flex-start; font:600 0.68rem "JetBrains Mono",monospace; padding:3px 9px; border-radius:999px; border:1px solid var(--line); text-transform:uppercase; letter-spacing:0.04em; }
+.hlcard .coinname { font-weight:700; font-size:0.95rem; }
+.hlcard .date { color:var(--muted); font-size:0.8rem; }
+.hlcard .price { font:600 2.1rem "JetBrains Mono",monospace; margin-top:2px; }
+.hlcard .price.hidden { color:var(--muted); letter-spacing:3px; font-size:1.8rem; }
+.hlcard.ok { border-color:var(--good); }
+.hlcard.bad { border-color:var(--bad); }
+.vs { align-self:center; color:var(--muted); font:700 0.72rem "JetBrains Mono",monospace; text-transform:uppercase; letter-spacing:0.12em; }
+.guessrow { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.guessrow button { min-height:58px; font-size:1rem; font-weight:800; flex-direction:column; gap:1px; }
+.guessrow button.higher:not(:disabled):hover, .guessrow button.higher:focus-visible { border-color:var(--good); }
+.guessrow button.lower:not(:disabled):hover, .guessrow button.lower:focus-visible { border-color:var(--bad); }
+.guessrow button small { font-weight:500; color:var(--muted); font-size:0.68rem; }
+.result { display:flex; align-items:center; justify-content:center; gap:8px; font-weight:800; font-size:1rem; padding:10px; border-radius:8px; text-align:center; }
+.result.ok { color:var(--good); background:rgba(74,222,128,0.12); }
+.result.bad { color:var(--bad); background:rgba(255,107,107,0.12); }
+.nextrow button { width:100%; }
+.overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:12px; background:var(--scrim); z-index:4; border-radius:12px; }
+.sheet { width:100%; max-width:340px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.sheet h2 { margin:0; font-weight:800; font-size:1.2rem; line-height:1.2; }
+.sheet p { margin:0; color:var(--muted); font-size:0.84rem; }
+.sheet .big { font-family:"JetBrains Mono",monospace; font-weight:600; font-size:2.4rem; line-height:1; }
+.sheet .newbest { color:var(--gold); font-weight:800; font-size:0.8rem; }
+.sheet .stack { display:flex; flex-direction:column; gap:8px; }
+.sheet .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sheet .status { min-height:1.2em; font-size:0.78rem; color:var(--accent); word-break:break-word; }
+.ctl { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.ctl button { min-height:40px; padding:4px 8px; font-size:0.82rem; }
+
+.rest { display:flex; flex-direction:column; gap:20px; }
+.card2 { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:18px; display:flex; flex-direction:column; gap:12px; }
+.card2 h2 { font-weight:800; font-size:1.2rem; margin:0; line-height:1.15; }
+.card2 p { margin:0; color:var(--muted); font-size:0.9rem; }
+.stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.stat { background:var(--field); border:1px solid var(--line); border-radius:6px; padding:8px 10px; display:flex; flex-direction:column; min-width:0; }
+.stat small { color:var(--muted); font-size:0.72rem; }
+.stat b { font:600 1.25rem "JetBrains Mono",monospace; overflow-wrap:anywhere; }
+.hint { font-size:0.82rem; color:var(--muted); margin:0; }
+.status { font-size:0.85rem; min-height:1.3em; color:var(--accent); }
+.themes { display:flex; flex-wrap:wrap; gap:8px; }
+.themes button { flex-direction:column; align-items:flex-start; gap:0; padding:8px 12px; }
+.themes small { color:var(--muted); font-weight:500; font-size:0.7rem; }
+.amounts { display:flex; flex-wrap:wrap; gap:8px; }
+.amounts button { font-family:"JetBrains Mono",monospace; font-size:0.85rem; }
+.pay { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.qr { background:#fff; padding:10px; border-radius:6px; line-height:0; flex:none; }
+.qr img, .qr canvas { max-width:100%; height:auto; }
+.addr-box { flex:1 1 200px; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.addr { font-family:"JetBrains Mono",monospace; font-size:0.78rem; word-break:break-all; user-select:all; background:var(--field); border:1px solid var(--line); border-radius:6px; padding:10px; }
+.rules { border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.rules summary { cursor:pointer; padding:12px 14px; font-weight:800; }
+.rules-body { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; font-size:0.86rem; color:var(--muted); }
+.rules-body h3 { margin:6px 0 0; font:600 0.74rem "JetBrains Mono",monospace; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink); }
+.rules-body p { margin:0; }
+.toast { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); max-width:min(92vw,420px); background:var(--card); border:1px solid var(--accent); border-radius:10px; padding:10px 14px; font-size:0.85rem; z-index:20; box-shadow:0 8px 30px rgba(0,0,0,0.5); text-align:center; }
+footer { color:var(--muted); font-size:0.8rem; }
+@media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; transition:none !important; } }
+</style></head>
+<body>
+<noscript><p style="padding:16px">Feeless Higher/Lower needs JavaScript to run.</p></noscript>
+<div class="layout">
+  <main class="stage" id="stage">
+    <div class="topbar">
+      <h1>Feeless Higher/Lower <span class="sup" id="supmark" hidden title="Supporter">&#10022;</span></h1>
+      <button type="button" id="snd" aria-pressed="true" style="min-height:36px;padding:4px 12px;font-size:0.8rem">Sound on</button>
+    </div>
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" id="m-daily" aria-pressed="false"><span id="dayno">Daily #1</span></button>
+      <button type="button" id="m-quick" aria-pressed="true">Quick 60</button>
+      <button type="button" id="m-survival" aria-pressed="false">Survival</button>
+    </div>
+    <div class="mod" id="modbox"></div>
+    <div class="hud">
+      <div><small id="h-plabel">Progress</small><b id="h-p">0/15</b></div>
+      <div><small>Score</small><b id="h-score">0</b></div>
+      <div><small>Streak</small><b id="h-streak">0</b></div>
+      <div><small>Skips</small><b id="h-skips">1</b></div>
+    </div>
+    <div class="board" id="board">
+      <div class="hlcard cur" id="curcard">
+        <span class="chip" id="cur-chip">BTC</span>
+        <span class="coinname" id="cur-name">Bitcoin</span>
+        <span class="date" id="cur-date">date</span>
+        <span class="price mono" id="cur-price">$0</span>
+      </div>
+      <div class="vs">was it higher or lower?</div>
+      <div class="hlcard" id="nextcard">
+        <span class="chip" id="next-chip">ETH</span>
+        <span class="coinname" id="next-name">Ethereum</span>
+        <span class="date" id="next-date">date</span>
+        <span class="price mono hidden" id="next-price">?????</span>
+      </div>
+      <div class="guessrow" id="guessrow">
+        <button type="button" class="higher" id="g-higher">&#9650; Higher<small>price went up</small></button>
+        <button type="button" class="lower" id="g-lower">&#9660; Lower<small>price went down</small></button>
+      </div>
+      <div class="result" id="result" hidden></div>
+      <div class="nextrow" id="nextrow" hidden><button type="button" class="primary" id="next">Next</button></div>
+      <div class="overlay" id="ov" role="dialog" aria-modal="true" aria-labelledby="o-title" hidden>
+        <div class="sheet">
+          <h2 id="o-title">Round complete</h2>
+          <div class="big mono" id="o-score">0</div>
+          <div class="newbest" id="o-new" hidden>New best</div>
+          <p id="o-text"></p>
+          <div class="stack">
+            <button type="button" class="primary" id="o-again">Play again</button>
+            <div class="row2">
+              <button type="button" id="o-share">Share</button>
+              <button type="button" id="o-tip">Tip 0.01 XNO</button>
+            </div>
+          </div>
+          <div class="status" id="o-status" role="status"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ctl">
+      <button type="button" id="skip">Skip card (1)</button>
+      <button type="button" id="restart">New round</button>
+      <button type="button" id="b-tipjump">Tip XNO</button>
+    </div>
+  </main>
+
+  <div class="rest">
+    <details class="rules">
+      <summary>How to play</summary>
+      <div class="rules-body">
+        <h3>Goal</h3>
+        <p>You're shown a coin, a date and its price. Below it is another coin and date with the price hidden. Guess whether that price was higher or lower than the one above. Guess right and the hidden card becomes the new current card, and a fresh card appears below it. Keep the chain going as long as you can.</p>
+        <h3>The data</h3>
+        <p>All prices are rounded, publicly reported historical figures, checked against news and market-data sources. They are approximations for a game, not exact exchange data or financial advice, and nothing here is a prediction about future prices.</p>
+        <h3>Scoring</h3>
+        <p>Each correct guess is worth more the longer your current streak is. A wrong guess resets the streak.</p>
+        <h3>Modes</h3>
+        <p>Daily: the same 15-card chain for everyone, new at 00:00 UTC. Reach the end without a wrong guess to clear the day. Quick 60: 60 seconds of guesses — a wrong one just resets your streak and the game carries on. Survival: a classic chain that ends on your first wrong guess; see how long you can go.</p>
+        <h3>Skip</h3>
+        <p>Not sure about the next card? Skip it once per round for a fresh one, free of charge to your streak. Supporters get two skips.</p>
+        <h3>Keyboard</h3>
+        <p>Press the up arrow or H for Higher, the down arrow or L for Lower, and Enter or Space for Next.</p>
+        <h3>Ranks</h3>
+        <p>Total correct guesses earn a rank: Newbie, Hodler (50), Diamond Hands (150), Whale (400) and Satoshi (1,000).</p>
+        <h3>Supporters</h3>
+        <p>A tip of 0.01 XNO or more unlocks the extra accent colours and a second skip. Tips are optional and the whole game is free.</p>
+      </div>
+    </details>
+
+    <section class="card2" aria-label="Daily challenge">
+      <h2>Daily challenge <span class="mono" id="d-no"></span></h2>
+      <p id="d-desc"></p>
+      <div class="stats">
+        <div class="stat"><small>Daily streak</small><b id="s-streak">0</b></div>
+        <div class="stat"><small>Best streak</small><b id="s-bstreak">0</b></div>
+        <div class="stat"><small>Days played</small><b id="s-days">0</b></div>
+        <div class="stat"><small>Today</small><b id="s-today">Open</b></div>
+      </div>
+      <div class="row2"><button type="button" class="primary" id="d-play">Play today's challenge</button></div>
+      <p class="hint" id="d-reset"></p>
+    </section>
+
+    <section class="card2" aria-label="Your record">
+      <h2>Your record</h2>
+      <div class="stats">
+        <div class="stat"><small>Rank</small><b id="r-rank">Newbie</b></div>
+        <div class="stat"><small>Correct guesses</small><b id="r-correct">0</b></div>
+        <div class="stat"><small>Accuracy</small><b id="r-acc">-</b></div>
+        <div class="stat"><small>Best survival chain</small><b id="r-bs">0</b></div>
+        <div class="stat"><small>Best Quick score</small><b id="r-bq">0</b></div>
+        <div class="stat"><small>Best combo</small><b id="r-bc">0</b></div>
+      </div>
+    </section>
+
+    <section class="card2" aria-label="Accent colours">
+      <h2>Accent colour</h2>
+      <div class="themes" id="themes" role="group" aria-label="Accent colours"></div>
+      <p id="theme-note"></p>
+    </section>
+
+    <aside class="card2" id="tip" aria-label="Tip the author">
+      <h2>Enjoying it? Send some XNO.</h2>
+      <p>Tips are optional and go straight to the creator's Nano wallet. Transfers settle in seconds with no fee. A tip of 0.01 XNO or more unlocks the supporter perks.</p>
+      <div class="amounts" role="group" aria-label="Amount">
+        <button type="button" data-amt="0.01" aria-pressed="true">0.01 XNO</button>
+        <button type="button" data-amt="0.05" aria-pressed="false">0.05 XNO</button>
+        <button type="button" data-amt="0.1" aria-pressed="false">0.1 XNO</button>
+        <button type="button" data-amt="" aria-pressed="false">Any amount</button>
+      </div>
+      <div class="pay">
+        <div class="qr" id="qr"></div>
+        <div class="addr-box">
+          <a class="btn primary" id="openw" href="#">Open in wallet</a>
+          <div class="addr" id="addr"></div>
+          <div class="row2">
+            <button type="button" id="copy">Copy address</button>
+            <button type="button" id="check">I've sent it, check</button>
+          </div>
+          <div class="status" id="tstatus" role="status"></div>
+          <p class="hint" id="thint"></p>
+        </div>
+      </div>
+    </aside>
+
+    <footer>Only send XNO to the address shown above. Transfers on the Nano network cannot be reversed. Prices in this game are rounded historical approximations for entertainment and are not financial advice.</footer>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = function (id) { return document.getElementById(id); };
+  const NANO_ADDRESS = "nano_3a7e3irpbpxbh1n7dk9u3cm9tnd97q1unjxn67ni9gijoxfmzguitx1xgc9u";
+  const RPCS = ["https://rpc.nano.to", "https://node.somenano.com/proxy"];
+  function lsGet(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+  function jget(k, d) { try { const v = JSON.parse(lsGet(k, "")); return v === null || v === undefined ? d : v; } catch (e) { return d; } }
+
+  // ---------- dataset: [ticker, coin name, date label, price USD] ----------
+  // Rounded, publicly reported historical figures, checked against news/market-data sources. Approximations for a game, not exact exchange data.
+  const COINS = { BTC: { name: "Bitcoin", color: "#f7931a" }, ETH: { name: "Ethereum", color: "#8c9eff" }, LTC: { name: "Litecoin", color: "#cfd4db" }, DOGE: { name: "Dogecoin", color: "#d9b54c" }, XMR: { name: "Monero", color: "#ff7a33" }, XRP: { name: "XRP", color: "#7fa8ff" }, ADA: { name: "Cardano", color: "#4d79e4" }, SOL: { name: "Solana", color: "#b26bff" }, BNB: { name: "BNB", color: "#f0b90b" }, DOT: { name: "Polkadot", color: "#ff5c97" }, XNO: { name: "Nano", color: "#26d6c7" } };
+  const DATA = [
+    ["BTC", "Oct 2009 (first quoted rate)", 0.0008], ["BTC", "May 2010 (Bitcoin Pizza Day)", 0.0025], ["BTC", "Feb 2011 (reaches $1)", 1.00],
+    ["BTC", "Apr 2013", 100], ["BTC", "Nov 2013", 1000], ["BTC", "Jan 2015 (bear-market low)", 170],
+    ["BTC", "Dec 2017 (cycle peak)", 19500], ["BTC", "Dec 2018 (bear-market low)", 3200], ["BTC", "Mar 2020 (COVID crash)", 5000],
+    ["BTC", "Nov 2021 (all-time high)", 69000], ["BTC", "Nov 2022 (FTX-collapse low)", 15500], ["BTC", "Mar 2024 (post-ETF high)", 73000],
+    ["ETH", "Jul 2015 (launch week)", 2.80], ["ETH", "Jan 2016 (bear-market low)", 0.95], ["ETH", "Jun 2017", 300],
+    ["ETH", "Jan 2018 (cycle peak)", 1400], ["ETH", "Dec 2018 (bear-market low)", 85], ["ETH", "Aug 2020 (DeFi summer)", 400],
+    ["ETH", "May 2021 (local peak)", 4170], ["ETH", "Nov 2021 (all-time high)", 4800], ["ETH", "Jun 2022 (bear-market low)", 1020],
+    ["LTC", "Nov 2013 (cycle peak)", 50], ["LTC", "Jan 2018 (cycle peak)", 360], ["LTC", "Dec 2018 (bear-market low)", 24], ["LTC", "May 2021 (local peak)", 410],
+    ["DOGE", "Dec 2017 (cycle spike)", 0.017], ["DOGE", "Mar 2020", 0.002], ["DOGE", "Jan 2021 (social-media pump)", 0.08],
+    ["DOGE", "May 2021 (all-time high)", 0.73], ["DOGE", "2022 (settled range)", 0.06],
+    ["XMR", "Jan 2018 (cycle peak)", 470], ["XMR", "Dec 2018 (bear-market low)", 45], ["XMR", "Jan 2021 (local peak)", 480],
+    ["XRP", "Jan 2018 (cycle peak)", 3.30], ["XRP", "2019-2020 (settled range)", 0.25], ["XRP", "Apr 2021 (local peak)", 1.90],
+    ["ADA", "Jan 2018 (cycle peak)", 1.33], ["ADA", "2020 (bear-market range)", 0.04], ["ADA", "Sep 2021 (all-time high)", 3.10],
+    ["SOL", "Apr 2020 (launch)", 0.77], ["SOL", "Nov 2021 (all-time high)", 260], ["SOL", "Dec 2022 (bear-market low)", 8],
+    ["BNB", "2017 (token-sale price)", 0.10], ["BNB", "May 2021 (local peak)", 690], ["BNB", "2022-2023 (settled range)", 310],
+    ["DOT", "Nov 2021 (all-time high)", 55], ["DOT", "2022 (bear-market low)", 5],
+    ["XNO", "Jan 2018 (all-time high, as XRB)", 37.62], ["XNO", "Feb 2018 (post-peak crash)", 10], ["XNO", "2019-2020 (bear-market range)", 0.80], ["XNO", "Dec 2020", 1.05]
+  ];
+  const RANKS = [{ at: 0, n: "Newbie" }, { at: 50, n: "Hodler" }, { at: 150, n: "Diamond Hands" }, { at: 400, n: "Whale" }, { at: 1000, n: "Satoshi" }];
+  const ACCENTS = [
+    { id: "blue", name: "Blue", c: "#4ea1ff", free: true }, { id: "violet", name: "Violet", c: "#a78bfa", free: true },
+    { id: "gold", name: "Gold", c: "#fbbf24" }, { id: "mint", name: "Mint", c: "#2dd4bf" }, { id: "neon", name: "Neon", c: "#e879f9" }
+  ];
+  function money(v) {
+    if (v >= 1000) return "$" + Math.round(v).toLocaleString("en-US");
+    if (v >= 1) return "$" + v.toFixed(2);
+    if (v >= 0.01) return "$" + v.toFixed(3);
+    return "$" + v.toFixed(4);
+  }
+  function rankFor(n) { let r = RANKS[0]; RANKS.forEach(function (x) { if (n >= x.at) r = x; }); return r; }
+  function dateKey(d) { return (d || new Date()).toISOString().slice(0, 10); }
+  function prevKey(k) { return dateKey(new Date(Date.parse(k + "T00:00:00Z") - 864e5)); }
+  const EPOCH = Date.UTC(2026, 9, 31);
+  function dayNumber(k) { return Math.max(1, Math.round((Date.parse(k + "T00:00:00Z") - EPOCH) / 864e5) + 1); }
+  function xmur3(str) {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+    return function () { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return h >>> 0; };
+  }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffle(arr, rng) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; } return arr; }
+
+  // ---------- storage ----------
+  let supporter = lsGet("hl-sup", "0") === "1";
+  let accent = lsGet("hl-accent", "blue");
+  let muted = lsGet("hl-mute", "0") === "1";
+  const stats = Object.assign({ correct: 0, wrong: 0, bestQuick: 0, bestSurv: 0, bestCombo: 0 }, jget("hl-stats", {}));
+  const daily = Object.assign({ last: "", streak: 0, best: 0, played: 0, cleared: false, progress: 0 }, jget("hl-daily", {}));
+  function accentOk(id) { const a = ACCENTS.filter(function (x) { return x.id === id; })[0]; return !!a && (a.free || supporter); }
+  if (!accentOk(accent)) accent = "blue";
+  function saveStats() { lsSet("hl-stats", JSON.stringify(stats)); }
+  function liveStreak() { const k = dateKey(); return (daily.last === k || daily.last === prevKey(k)) ? daily.streak : 0; }
+  function recordDaily(key, cleared, progress) {
+    if (daily.last === key) return false;
+    daily.streak = daily.last === prevKey(key) ? daily.streak + 1 : 1;
+    daily.last = key; daily.best = Math.max(daily.best, daily.streak); daily.played++; daily.cleared = cleared; daily.progress = progress;
+    lsSet("hl-daily", JSON.stringify(daily)); return true;
+  }
+  function skipsMax() { return supporter ? 2 : 1; }
+
+  // ---------- audio ----------
+  let ac = null;
+  function beep(freq, dur, type, vol, delay) {
+    if (muted) return;
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || "triangle"; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(vol || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  const sfx = {
+    ok: function (streak) { const k = 1 + Math.min(streak, 10) * 0.035; beep(659 * k, 0.09, "triangle", 0.06); beep(988 * k, 0.16, "triangle", 0.06, 0.08); },
+    bad: function () { beep(200, 0.25, "sawtooth", 0.05); },
+    win: function () { [523, 659, 784, 1047].forEach(function (f, i) { beep(f, 0.16, "triangle", 0.07, i * 0.1); }); }
+  };
+  function vib(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+  function renderSound() { $("snd").textContent = muted ? "Sound off" : "Sound on"; $("snd").setAttribute("aria-pressed", muted ? "false" : "true"); }
+  $("snd").addEventListener("click", function () { muted = !muted; lsSet("hl-mute", muted ? "1" : "0"); renderSound(); if (!muted) beep(660, 0.08); });
+  let toastT = 0;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 3500); }
+
+  // ---------- round state ----------
+  const DAILY_TARGET = 15, QUICK_TIME = 60;
+  let mode = "quick", rng = Math.random, bag = [], bagI = 0, cur = null, nxt = null, score = 0, streak = 0, bestStreak = 0;
+  let correct = 0, wrong = 0, skipsLeft = 1, phase = "guessing", dailyCfg = null, dailyQueue = [], dailyIdx = 0, dailyProcessed = 0;
+  let timeLeft = QUICK_TIME, timerId = 0, lastGuess = null;
+  function freshBag() { bag = shuffle(DATA.slice(), rng); bagI = 0; }
+  function draw(excludeIdx) {
+    if (bagI >= bag.length) freshBag();
+    let card = bag[bagI++];
+    if (excludeIdx != null && card === excludeIdx && bagI < bag.length) { const nx = bag[bagI]; bag[bagI] = card; bag[bagI - 1] = nx; card = nx; bagI++; }
+    return card;
+  }
+  function dailyDraw() { return dailyQueue[dailyIdx++]; }
+  function nextCardFn() { return mode === "daily" ? dailyDraw() : draw(cur); }
+
+  function resetRoundState() {
+    score = 0; streak = 0; bestStreak = 0; correct = 0; wrong = 0; timeLeft = QUICK_TIME; dailyIdx = 0; dailyProcessed = 0;
+    skipsLeft = skipsMax(); phase = "guessing"; lastGuess = null;
+  }
+  function newRound() {
+    $("ov").hidden = true; clearInterval(timerId);
+    if (mode === "daily") {
+      dailyCfg = { key: dateKey(), no: dayNumber(dateKey()) }; rng = mulberry32(xmur3("feeless-hilo-" + dailyCfg.key)());
+      const pool = shuffle(DATA.slice(), rng), seq = [];
+      for (let i = 0; i < DAILY_TARGET + 1 && i < pool.length; i++) seq.push(pool[i]);
+      dailyQueue = seq;
+    } else { dailyCfg = null; rng = Math.random; freshBag(); }
+    resetRoundState();
+    if (mode === "daily") { dailyIdx = 0; cur = dailyDraw(); nxt = dailyDraw(); }
+    else { cur = draw(); nxt = draw(cur); }
+    renderMode(); renderCards(); renderHud();
+    if (mode === "quick") { timerId = setInterval(tickTimer, 200); }
+  }
+  function tickTimer() {
+    if (phase === "done") { clearInterval(timerId); return; }
+    timeLeft -= 0.2;
+    if (timeLeft <= 0) { timeLeft = 0; renderHud(); clearInterval(timerId); endRound(); return; }
+    renderHud();
+  }
+
+  function guess(dir) {
+    if (phase !== "guessing") return;
+    phase = "revealed"; lastGuess = dir;
+    const actual = nxt[2] > cur[2] ? "higher" : "lower";
+    const ok = dir === actual;
+    let gained = 0;
+    if (ok) { gained = 50 + Math.min(streak, 15) * 10; score += gained; streak++; bestStreak = Math.max(bestStreak, streak); correct++; stats.correct++; sfx.ok(streak); vib(8); }
+    else { streak = 0; wrong++; stats.wrong++; sfx.bad(); vib([0, 30, 40, 30]); }
+    stats.bestCombo = Math.max(stats.bestCombo, bestStreak); saveStats();
+    $("nextcard").classList.add(ok ? "ok" : "bad");
+    $("next-price").classList.remove("hidden"); $("next-price").textContent = money(nxt[2]);
+    const res = $("result"); res.hidden = false; res.className = "result " + (ok ? "ok" : "bad");
+    res.textContent = (ok ? "Correct! " : "Not quite. ") + (actual === "higher" ? "It was higher." : "It was lower.") + (ok ? " +" + gained : "");
+    $("guessrow").hidden = true; $("nextrow").hidden = false;
+    const endsHere = (mode !== "quick" && !ok) || (mode === "daily" && dailyProcessed + 1 >= DAILY_TARGET && ok);
+    $("next").textContent = endsHere ? "See results" : "Next";
+    renderHud();
+    try { $("next").focus({ preventScroll: true }); } catch (e) {}
+    if (mode === "daily") { dailyProcessed++; if (!ok || dailyProcessed >= DAILY_TARGET) { /* will end on Next */ } }
+  }
+  function advance() {
+    if (phase !== "revealed") return;
+    const wasOk = lastGuess === (nxt[2] > cur[2] ? "higher" : "lower");
+    if (mode === "daily") {
+      if (!wasOk || dailyProcessed >= DAILY_TARGET) { endRound(); return; }
+      cur = nxt; nxt = dailyDraw();
+    } else if (mode === "survival") {
+      if (!wasOk) { endRound(); return; }
+      cur = nxt; nxt = draw(cur);
+    } else {
+      if (wasOk) cur = nxt; else cur = draw();
+      nxt = draw(cur);
+    }
+    phase = "guessing";
+    $("nextcard").classList.remove("ok", "bad"); $("result").hidden = true; $("guessrow").hidden = false; $("nextrow").hidden = true;
+    renderCards(); renderHud();
+  }
+  $("g-higher").addEventListener("click", function () { guess("higher"); });
+  $("g-lower").addEventListener("click", function () { guess("lower"); });
+  $("next").addEventListener("click", advance);
+  $("skip").addEventListener("click", function () {
+    if (phase !== "guessing" || skipsLeft <= 0) return;
+    skipsLeft--; nxt = mode === "daily" ? nxt : draw(cur);
+    renderCards(); renderHud(); beep(500, 0.1, "square", 0.03);
+  });
+  $("restart").addEventListener("click", newRound);
+  $("o-again").addEventListener("click", newRound);
+  ["daily", "quick", "survival"].forEach(function (m) { $("m-" + m).addEventListener("click", function () { mode = m; newRound(); }); });
+  $("d-play").addEventListener("click", function () { mode = "daily"; newRound(); try { $("stage").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} });
+  $("b-tipjump").addEventListener("click", function () { try { $("tip").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} });
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (!$("ov").hidden) return;
+    if (phase === "guessing") {
+      if (e.key === "ArrowUp" || e.key === "h" || e.key === "H") { e.preventDefault(); guess("higher"); return; }
+      if (e.key === "ArrowDown" || e.key === "l" || e.key === "L") { e.preventDefault(); guess("lower"); return; }
+    } else if (phase === "revealed" && (e.key === "Enter" || e.key === " ") && tag !== "BUTTON" && tag !== "A" && tag !== "SUMMARY") { e.preventDefault(); advance(); }
+  });
+
+  function endRound() {
+    phase = "done"; clearInterval(timerId);
+    let isBest = false;
+    if (mode === "quick" && score > stats.bestQuick) { stats.bestQuick = score; isBest = true; }
+    if (mode === "survival" && bestStreak > stats.bestSurv) { stats.bestSurv = bestStreak; isBest = true; }
+    let firstDaily = false, cleared = false;
+    if (mode === "daily") { cleared = dailyProcessed >= DAILY_TARGET && wrong === 0; firstDaily = recordDaily(dailyCfg.key, cleared, Math.min(dailyProcessed, DAILY_TARGET)); }
+    saveStats(); renderStats(); renderDaily(); if (cleared || mode !== "daily") sfx.win();
+    const acc = (correct + wrong) ? Math.round(correct / (correct + wrong) * 100) : 100;
+    $("o-title").textContent = mode === "daily" ? ("Daily #" + dailyCfg.no + (cleared ? " cleared" : " ended")) : (mode === "survival" ? "Chain broken" : "Time's up");
+    $("o-score").textContent = mode === "survival" ? bestStreak : score;
+    $("o-new").hidden = !isBest;
+    $("o-text").textContent = correct + " correct, " + wrong + " wrong (" + acc + "% accuracy). Best streak " + bestStreak + ". Rank: " + rankFor(stats.correct).n + "." +
+      (mode === "daily" ? " Daily streak: " + liveStreak() + "." + (cleared ? "" : " (" + Math.min(dailyProcessed, DAILY_TARGET) + "/" + DAILY_TARGET + " reached.)") + (firstDaily ? "" : " (Replay, streak already counted today.)") : "");
+    $("o-status").textContent = "";
+    $("o-again").textContent = mode === "daily" ? "Replay today's challenge" : "Play again";
+    $("ov").hidden = false;
+    try { $("o-again").focus({ preventScroll: true }); } catch (e) {}
+  }
+
+  // ---------- ui ----------
+  function renderCards() {
+    $("cur-chip").textContent = cur[0]; $("cur-chip").style.borderColor = COINS[cur[0]].color; $("cur-chip").style.color = COINS[cur[0]].color;
+    $("cur-name").textContent = COINS[cur[0]].name; $("cur-date").textContent = cur[1]; $("cur-price").textContent = money(cur[2]);
+    $("next-chip").textContent = nxt[0]; $("next-chip").style.borderColor = COINS[nxt[0]].color; $("next-chip").style.color = COINS[nxt[0]].color;
+    $("next-name").textContent = COINS[nxt[0]].name; $("next-date").textContent = nxt[1];
+    $("next-price").classList.add("hidden"); $("next-price").textContent = "?????";
+  }
+  function renderHud() {
+    $("h-score").textContent = score; $("h-streak").textContent = streak; $("h-skips").textContent = skipsLeft;
+    $("skip").textContent = "Skip card (" + skipsLeft + ")"; $("skip").disabled = phase !== "guessing" || skipsLeft <= 0;
+    if (mode === "daily") { $("h-plabel").textContent = "Progress"; $("h-p").textContent = Math.min(dailyProcessed, DAILY_TARGET) + "/" + DAILY_TARGET; }
+    else if (mode === "quick") { $("h-plabel").textContent = "Time"; $("h-p").textContent = Math.ceil(timeLeft) + "s"; }
+    else { $("h-plabel").textContent = "Chain"; $("h-p").textContent = streak; }
+  }
+  function renderMode() {
+    ["daily", "quick", "survival"].forEach(function (m) { $("m-" + m).setAttribute("aria-pressed", mode === m ? "true" : "false"); });
+    const box = $("modbox"); box.textContent = ""; const b = document.createElement("b");
+    if (mode === "daily") { b.textContent = "Daily #" + (dailyCfg ? dailyCfg.no : dayNumber(dateKey())) + ": "; box.appendChild(b); box.appendChild(document.createTextNode("15 cards, the same chain for everyone today.")); }
+    else if (mode === "survival") { b.textContent = "Survival: "; box.appendChild(b); box.appendChild(document.createTextNode("one wrong guess ends the chain. How far can you go?")); }
+    else { b.textContent = "Quick 60: "; box.appendChild(b); box.appendChild(document.createTextNode("60 seconds of guesses; a miss just resets your streak.")); }
+  }
+  function renderStats() {
+    $("r-rank").textContent = rankFor(stats.correct).n; $("r-correct").textContent = stats.correct;
+    $("r-acc").textContent = (stats.correct + stats.wrong) ? Math.round(stats.correct / (stats.correct + stats.wrong) * 100) + "%" : "-";
+    $("r-bs").textContent = stats.bestSurv; $("r-bq").textContent = stats.bestQuick; $("r-bc").textContent = stats.bestCombo;
+  }
+  function renderDaily() {
+    const k = dateKey(), done2 = daily.last === k, s = liveStreak();
+    $("dayno").textContent = "Daily #" + dayNumber(k); $("d-no").textContent = "#" + dayNumber(k);
+    $("d-desc").textContent = done2 ? ("You " + (daily.cleared ? "cleared" : "reached " + daily.progress + "/" + DAILY_TARGET + " in") + " today's challenge. Come back tomorrow for a new one.") : ("Guess your way through all " + DAILY_TARGET + " cards without a miss to " + (s ? "extend" : "start") + " a streak.");
+    $("s-streak").textContent = s; $("s-bstreak").textContent = daily.best; $("s-days").textContent = daily.played;
+    $("s-today").textContent = done2 ? (daily.cleared ? "Cleared" : daily.progress + "/" + DAILY_TARGET) : "Open";
+    $("d-play").textContent = done2 ? "Replay today's challenge" : "Play today's challenge";
+    const left = Math.max(0, Date.parse(k + "T00:00:00Z") + 864e5 - Date.now());
+    $("d-reset").textContent = "New challenge in " + Math.floor(left / 36e5) + "h " + Math.floor(left % 36e5 / 6e4) + "m (00:00 UTC).";
+  }
+  function applyAccent() { const a = ACCENTS.filter(function (x) { return x.id === accent; })[0] || ACCENTS[0]; document.documentElement.style.setProperty("--accent", a.c); }
+  function renderThemes() {
+    const box = $("themes"); box.textContent = "";
+    ACCENTS.forEach(function (a) {
+      const ok = accentOk(a.id), b = document.createElement("button"); b.type = "button";
+      b.disabled = !ok; b.setAttribute("aria-pressed", a.id === accent ? "true" : "false");
+      const n = document.createElement("span"); n.textContent = a.name; n.style.color = a.c;
+      const s = document.createElement("small"); s.textContent = a.free ? "Free" : (supporter ? "Supporter" : "Supporters");
+      b.appendChild(n); b.appendChild(s);
+      b.addEventListener("click", function () { accent = a.id; lsSet("hl-accent", accent); applyAccent(); renderThemes(); });
+      box.appendChild(b);
+    });
+    $("theme-note").textContent = supporter ? "Thank you for supporting the game. You get a second skip every round." : "Tip 0.01 XNO or more to unlock the Gold, Mint and Neon accents and a second skip.";
+    $("supmark").hidden = !supporter;
+  }
+
+  // ---------- share ----------
+  function copyText(text, ok, fail) { try { navigator.clipboard.writeText(text).then(ok, fail); } catch (e) { fail(); } }
+  function shareUrl() { return location.href.split("#")[0].split("?")[0]; }
+  $("o-share").addEventListener("click", function () {
+    const head = mode === "daily" ? "Feeless Higher/Lower #" + dailyCfg.no : (mode === "survival" ? "Feeless Higher/Lower Survival" : "Feeless Higher/Lower");
+    const stat = mode === "survival" ? ("a chain of " + bestStreak) : ("score " + score);
+    const msg = head + ": " + stat + " (" + correct + " correct, " + wrong + " wrong)\nCan you beat it? " + shareUrl();
+    const fallback = function () { copyText(msg, function () { $("o-status").textContent = "Copied. Paste it into a message to challenge a friend."; }, function () { $("o-status").textContent = msg; }); };
+    if (navigator.share) { navigator.share({ text: msg }).catch(fallback); return; }
+    fallback();
+  });
+  $("o-tip").addEventListener("click", function () { pickAmount(document.querySelector('.amounts button[data-amt="0.01"]')); $("ov").hidden = true; try { $("tip").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} });
+
+  // ---------- tip card ----------
+  let tipAmt = "0.01", qr = null, checking = false;
+  function toRaw(xno) { const parts = xno.split("."), frac = ((parts[1] || "") + "000000000000000000000000000000").slice(0, 30); return (BigInt(parts[0]) * 10n ** 30n + BigInt(frac)).toString(); }
+  function uriFor(a) { return "nano:" + NANO_ADDRESS + (a ? "?amount=" + toRaw(a) : ""); }
+  function setPending() { if (tipAmt) lsSet("hl-tip", JSON.stringify({ amt: tipAmt, ts: Date.now() })); }
+  function renderTip() {
+    $("addr").textContent = NANO_ADDRESS;
+    const uri = uriFor(tipAmt);
+    $("openw").href = uri; $("check").hidden = !tipAmt;
+    $("thint").textContent = tipAmt ? "On a phone, tap Open in wallet. On a computer, scan the code with your Nano wallet. Then press the check button." : "Any amount is welcome. Tips sent this way can't be checked automatically, so they don't unlock the supporter perks.";
+    try {
+      if (typeof QRCode === "undefined") throw new Error("no qr");
+      if (!qr) qr = new QRCode($("qr"), { text: uri, width: 168, height: 168, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+      else { qr.clear(); qr.makeCode(uri); }
+    } catch (e) { $("qr").style.display = "none"; }
+  }
+  function pickAmount(btn) {
+    if (!btn) return;
+    document.querySelectorAll(".amounts button").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+    btn.setAttribute("aria-pressed", "true");
+    tipAmt = btn.getAttribute("data-amt"); setPending(); renderTip(); $("tstatus").textContent = "";
+  }
+  document.querySelectorAll(".amounts button").forEach(function (b) { b.addEventListener("click", function () { pickAmount(b); }); });
+  $("openw").addEventListener("click", function () { setPending(); $("tstatus").textContent = "After you send, come back here and press the check button."; });
+  $("copy").addEventListener("click", function () {
+    setPending();
+    copyText(NANO_ADDRESS, function () { $("tstatus").textContent = "Address copied."; }, function () {
+      const r = document.createRange(); r.selectNodeContents($("addr")); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      $("tstatus").textContent = "Address selected. Press copy on your device.";
+    });
+  });
+  function rpc(body) {
+    let i = 0;
+    return new Promise(function (resolve, reject) {
+      (function next2() {
+        if (i >= RPCS.length) { reject(new Error("unreachable")); return; }
+        const url = RPCS[i++], ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 6000);
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal })
+          .then(function (r) { return r.json(); }).then(function (j) { clearTimeout(t); resolve(j); }).catch(function () { clearTimeout(t); next2(); });
+      })();
+    });
+  }
+  async function findTip(min, since) {
+    const claimed = jget("hl-claimed", []), need = BigInt(toRaw(min));
+    let reachable = false;
+    try {
+      const h = await rpc({ action: "account_history", account: NANO_ADDRESS, count: "60" });
+      reachable = true;
+      if (h && Array.isArray(h.history)) {
+        for (const b of h.history) {
+          if (b.type !== "receive" || claimed.indexOf(b.hash) >= 0) continue;
+          const ts = +b.local_timestamp; if (ts > 0 && ts * 1000 < since - 120000) continue;
+          if (BigInt(b.amount) >= need) return { ok: true, hash: b.hash };
+        }
+      }
+    } catch (e) {}
+    for (const cmd of ["receivable", "pending"]) {
+      try {
+        const p = await rpc({ action: cmd, account: NANO_ADDRESS, count: "60", threshold: need.toString(), source: "true" });
+        reachable = true; if (p && p.error) continue;
+        const bl = p && p.blocks;
+        if (bl && typeof bl === "object") {
+          for (const hsh in bl) { if (claimed.indexOf(hsh) >= 0) continue; const v = bl[hsh], amt = typeof v === "object" ? v.amount : v; if (BigInt(amt) >= need) return { ok: true, hash: hsh }; }
+        }
+        break;
+      } catch (e) {}
+    }
+    return { ok: false, reachable: reachable };
+  }
+  function unlockSupporter(hash) {
+    const claimed = jget("hl-claimed", []); claimed.push(hash); lsSet("hl-claimed", JSON.stringify(claimed.slice(-50)));
+    supporter = true; lsSet("hl-sup", "1"); renderThemes(); lsSet("hl-tip", ""); renderHud();
+    $("tstatus").textContent = "Thank you! Your tip arrived. Supporter accents and a second skip are unlocked.";
+  }
+  async function runCheck(tries, silent) {
+    if (checking) return;
+    const pend = jget("hl-tip", null);
+    if (!pend || !pend.amt) { if (!silent) $("tstatus").textContent = "Pick an amount first."; return; }
+    checking = true; $("check").disabled = true;
+    if (!silent) $("tstatus").textContent = "Checking the Nano network…";
+    let res = { ok: false, reachable: false };
+    for (let i = 0; i < tries; i++) { res = await findTip(pend.amt, pend.ts); if (res.ok) break; if (i < tries - 1) await new Promise(function (r) { setTimeout(r, 4000); }); }
+    checking = false; $("check").disabled = false;
+    if (res.ok) unlockSupporter(res.hash);
+    else if (!silent) $("tstatus").textContent = res.reachable ? "Not seen yet. Transfers take a few seconds, so press the check button again in a moment." : "Couldn't reach the Nano network from here. Try again shortly.";
+  }
+  $("check").addEventListener("click", function () { runCheck(8, false); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && !supporter && jget("hl-tip", null)) runCheck(4, true); });
+  { const p = jget("hl-tip", null); if (p && !p.amt) lsSet("hl-tip", ""); }
+
+  // ---------- go ----------
+  applyAccent(); renderSound(); renderThemes(); renderTip(); renderDaily(); renderStats();
+  setInterval(renderDaily, 30000);
+  newRound();
+  if (/[?&]selftest/.test(location.search)) {
+    window.__hl = {
+      DATA: DATA, guess: guess, advance: advance, skip: function () { $("skip").click(); }, newRound: newRound, setMode: function (m) { mode = m; newRound(); },
+      playCorrect: function () { const actual = nxt[2] > cur[2] ? "higher" : "lower"; guess(actual); advance(); },
+      playWrong: function () { const actual = nxt[2] > cur[2] ? "higher" : "lower"; guess(actual === "higher" ? "lower" : "higher"); advance(); },
+      forceTimeUp: function () { timeLeft = 0; endRound(); },
+      get phase() { return phase; }, get cur() { return cur; }, get nxt() { return nxt; }, get score() { return score; }, get streak() { return streak; },
+      get correct() { return correct; }, get wrong() { return wrong; }, get skipsLeft() { return skipsLeft; }, get daily() { return daily; }, get stats() { return stats; },
+      get dailyProcessed() { return dailyProcessed; }, get dailyQueue() { return dailyQueue; }, setSupporter: function (v) { supporter = v; }
+    };
+  }
+})();
+</script>
+</body></html>
